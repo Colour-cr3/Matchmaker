@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>True Love Compatibility Test</title>
   <style>
-    /* ========== THEME COLORS ========== */
     :root {
       --bg-light: #f5f5f7;
       --text-light: #1d1d1f;
@@ -74,20 +73,36 @@
     }
 
     .question {
-      margin-bottom: 1.2rem;
+      margin-bottom: 1.8rem;
     }
     label {
       display: block;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.6rem;
       font-weight: 500;
     }
-    input[type="number"] {
-      width: 60px;
-      padding: 0.4rem;
-      text-align: center;
-      border-radius: 8px;
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .option-btn {
+      flex: 1;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
       border: 1px solid #ccc;
-      font-size: 1rem;
+      background-color: transparent;
+      cursor: pointer;
+      transition: background-color 0.3s, color 0.3s, transform 0.2s;
+    }
+    .option-btn:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .option-btn.selected {
+      background-color: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
     }
 
     .error {
@@ -141,7 +156,7 @@
 
   <main>
     <p class="instructions">
-      Rate each statement from 1 (Strongly Disagree) to 5 (Strongly Agree).
+      Click the button that best matches your feelings for each statement.
     </p>
 
     <form id="loveForm">
@@ -155,7 +170,6 @@
   <footer>Made with ❤️ by Patrick</footer>
 
   <script>
-    // ================= CONSTANTS =================
     var DESIRED_ANSWERS = [4, 5, 3, 5, 2];
     var QUESTIONS = [
       "I am a night owl.",
@@ -167,63 +181,75 @@
     var TRUE_LOVE_THRESHOLD = 85;
     var FRIENDS_THRESHOLD = 60;
 
-    // =============== CREATE QUESTIONS ===============
     var container = document.getElementById("questionsContainer");
+
+    var OPTIONS = [
+      { label: "Strongly Disagree", value: 1 },
+      { label: "Disagree", value: 2 },
+      { label: "Indifferent", value: 3 },
+      { label: "Agree", value: 4 },
+      { label: "Strongly Agree", value: 5 }
+    ];
+
+    // Build questions with buttons
     for (var i = 0; i < QUESTIONS.length; i++) {
       var div = document.createElement("div");
       div.className = "question";
 
       var label = document.createElement("label");
       label.textContent = (i + 1) + ". " + QUESTIONS[i];
-      label.setAttribute("for", "q" + i);
+      div.appendChild(label);
 
-      var input = document.createElement("input");
-      input.type = "number";
-      input.id = "q" + i;
-      input.min = "1";
-      input.max = "5";
-      input.placeholder = "1-5";
-      input.required = true;
+      var optionsDiv = document.createElement("div");
+      optionsDiv.className = "options";
+
+      OPTIONS.forEach(function(opt) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "option-btn";
+        btn.textContent = opt.label;
+        btn.dataset.value = opt.value;
+        btn.addEventListener("click", function() {
+          var siblings = optionsDiv.querySelectorAll(".option-btn");
+          siblings.forEach(function(b) { b.classList.remove("selected"); });
+          btn.classList.add("selected");
+        });
+        optionsDiv.appendChild(btn);
+      });
 
       var err = document.createElement("span");
       err.className = "error";
       err.id = "err" + i;
 
-      div.appendChild(label);
-      div.appendChild(input);
+      div.appendChild(optionsDiv);
       div.appendChild(err);
       container.appendChild(div);
     }
 
-    // =============== VALIDATION FUNCTION ===============
-    function validate(inputs) {
+    function validate() {
       var valid = true;
-      for (var i = 0; i < inputs.length; i++) {
-        var val = inputs[i].value.trim();
+      for (var i = 0; i < QUESTIONS.length; i++) {
         var errMsg = document.getElementById("err" + i);
         errMsg.textContent = "";
-        if (val === "" || isNaN(val) || val < 1 || val > 5) {
-          errMsg.textContent = "Please enter a number between 1 and 5.";
+        var selected = document.querySelectorAll(".question:nth-child(" + (i + 1) + ") .option-btn.selected");
+        if (selected.length === 0) {
+          errMsg.textContent = "Please select an answer.";
           valid = false;
         }
       }
       return valid;
     }
 
-    // =============== FORM SUBMISSION ===============
-    document.getElementById("loveForm").addEventListener("submit", function (e) {
+    document.getElementById("loveForm").addEventListener("submit", function(e) {
       e.preventDefault();
-
-      var inputs = [];
-      for (var i = 0; i < QUESTIONS.length; i++) {
-        inputs.push(document.getElementById("q" + i));
-      }
-      if (!validate(inputs)) return;
+      if (!validate()) return;
 
       var totalDiff = 0;
       var summary = "";
       for (var j = 0; j < QUESTIONS.length; j++) {
-        var diff = Math.abs(inputs[j].value - DESIRED_ANSWERS[j]);
+        var selectedBtn = document.querySelector(".question:nth-child(" + (j + 1) + ") .option-btn.selected");
+        var val = parseInt(selectedBtn.dataset.value);
+        var diff = Math.abs(val - DESIRED_ANSWERS[j]);
         var score = 5 - diff;
         totalDiff += diff;
         summary += "<p><strong>" + QUESTIONS[j] + "</strong><br>Score: " + score + "/5</p>";
@@ -248,35 +274,25 @@
       results.classList.add("show");
     });
 
-    // =============== DARK MODE TOGGLE + SYSTEM DETECTION ===============
+    // DARK MODE
     var toggleBtn = document.getElementById("themeToggle");
-
     function setTheme(isDark) {
       document.body.classList.toggle("dark", isDark);
       toggleBtn.textContent = isDark ? "☀️" : "🌙";
     }
-
-    // Detect system preference
     var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     var savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark" || (savedTheme === null && prefersDark)) {
-      setTheme(true);
-    } else {
-      setTheme(false);
-    }
+    if (savedTheme === "dark" || (savedTheme === null && prefersDark)) setTheme(true);
+    else setTheme(false);
 
-    toggleBtn.addEventListener("click", function () {
+    toggleBtn.addEventListener("click", function() {
       var isDark = !document.body.classList.contains("dark");
       setTheme(isDark);
       localStorage.setItem("theme", isDark ? "dark" : "light");
     });
-
-    // Watch for system theme changes
     if (window.matchMedia) {
-      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
-        if (localStorage.getItem("theme") === null) {
-          setTheme(e.matches);
-        }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(e) {
+        if (localStorage.getItem("theme") === null) setTheme(e.matches);
       });
     }
   </script>
